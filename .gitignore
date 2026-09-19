@@ -1,0 +1,10 @@
+# Local environment secrets
+.env
+.env.local
+.env.*.local
+
+# Dependencies and generated output
+node_modules/
+.next/
+dist/
+build/
