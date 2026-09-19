@@ -1,43 +1,18 @@
 import { prisma } from "@/lib/prisma";
+import { createCustomer, createGrn, createInvoice, createProduct, createSupplier } from "./actions";
+export const dynamic = "force-dynamic";
+const money = new Intl.NumberFormat("en-US", { style:"currency", currency:"USD" });
 
-async function getMetrics() {
+export default async function Home({ searchParams }: { searchParams: Promise<{message?:string;error?:string}> }) {
+  const q = await searchParams;
   try {
-    const [products, customers, sales, lowStock] = await Promise.all([
-      prisma.product.count(),
-      prisma.customer.count(),
-      prisma.sale.count({ where: { status: "COMPLETED" } }),
-      prisma.product.count({ where: { quantity: { lte: 5 } } })
-    ]);
-    return { products, customers, sales, lowStock, connected: true };
-  } catch {
-    return { products: 0, customers: 0, sales: 0, lowStock: 0, connected: false };
-  }
+    const [products,suppliers,customers,invoices] = await Promise.all([prisma.product.findMany({orderBy:{createdAt:"desc"}}),prisma.supplier.findMany({orderBy:{createdAt:"desc"}}),prisma.customer.findMany({orderBy:{createdAt:"desc"}}),prisma.invoice.findMany({take:6,orderBy:{issuedAt:"desc"},include:{customer:true,items:true}})]);
+    const items = await prisma.invoiceItem.findMany(); const revenue = items.reduce((n,i)=>n+i.quantity*i.unitPrice.toNumber(),0); const cost=items.reduce((n,i)=>n+i.quantity*i.costPriceAtSale.toNumber(),0);
+    return <main><header><b>Stockwise ERP</b><nav><a href="#inventory">Inventory</a><a href="#crm">CRM</a><a href="#operations">Operations</a></nav><span className="status good">Supabase connected</span></header><section className="hero"><p className="eyebrow">OPERATIONS OVERVIEW</p><h1>Inventory and customer relationships, in one place.</h1><p>Add master data, receive stock, and issue invoices. Every stock movement is saved in the ledger.</p></section>{q.message&&<p className="notice success">{q.message}</p>}{q.error&&<p className="notice error">{q.error}</p>}<section className="cards"><Card label="Products" value={products.length}/><Card label="Customers" value={customers.length}/><Card label="Invoices" value={invoices.length}/><Card label="Low stock" value={products.filter(p=>p.quantityOnHand<=p.reorderLevel).length}/></section><section className="panel"><div><p className="eyebrow">SALES PERFORMANCE · USD</p><h2>{money.format(revenue)}</h2><p>Cost {money.format(cost)} · Profit {money.format(revenue-cost)}</p></div><span className="badge">USD / AED / LKR</span></section><section id="inventory" className="grid"><Form title="Add product" action={createProduct}><Input name="sku" label="SKU" required/><Input name="name" label="Product name" required/><Input name="description" label="Description"/><Input name="costPrice" label="Cost price (USD)" type="number" step="0.0001" required/><Input name="sellingPrice" label="Selling price (USD)" type="number" step="0.0001" required/><Input name="reorderLevel" label="Reorder level" type="number" defaultValue="0" required/><button>Add product</button></Form><List title="Products" rows={products.map(p=><li key={p.id}><b>{p.name}</b><span>{p.sku} · {p.quantityOnHand} in stock · {money.format(p.sellingPrice.toNumber())}</span></li>)}/></section><section id="crm" className="grid"><Form title="Add supplier" action={createSupplier}><Input name="name" label="Company name" required/><Input name="contactName" label="Contact person"/><Input name="country" label="Country"/><Input name="email" label="Email" type="email"/><Input name="phone" label="Phone"/><button>Add supplier</button></Form><Form title="Add customer" action={createCustomer}><Input name="name" label="Customer name" required/><label>Segment<select name="segment"><option>RETAIL</option><option>WHOLESALE</option></select></label><Input name="country" label="Country"/><Input name="email" label="Email" type="email"/><Input name="phone" label="Phone"/><button>Add customer</button></Form><List title="Customers" rows={customers.map(c=><li key={c.id}><b>{c.name}</b><span>{c.segment.toLowerCase()} · {c.country||"Country not set"}</span></li>)}/></section><section id="operations" className="grid"><Operation title="Receive goods (GRN)" action={createGrn} products={products} contacts={suppliers} contactName="supplierId" contactLabel="Supplier" priceLabel="Unit cost" button="Receive stock"/><Operation title="Issue invoice" action={createInvoice} products={products} contacts={customers} contactName="customerId" contactLabel="Customer" priceLabel="Unit selling price" button="Issue invoice"/><List title="Recent invoices" rows={invoices.map(i=><li key={i.id}><b>{i.number}</b><span>{i.customer?.name||"Walk-in"} · {i.currency} · {i.items.length} line(s)</span></li>)}/></section></main>;
+  } catch { return <main><header><b>Stockwise ERP</b></header><section className="hero"><p className="eyebrow">DATABASE CONNECTION</p><h1>Database setup pending.</h1><p>Check the Vercel connection variables and redeploy.</p></section></main>; }
 }
-
-export default async function Home() {
-  const metrics = await getMetrics();
-  const cards = [
-    ["Products", metrics.products, "Items in catalog"],
-    ["Customers", metrics.customers, "CRM contacts"],
-    ["Completed sales", metrics.sales, "Recorded orders"],
-    ["Low stock", metrics.lowStock, "At or below 5 units"]
-  ];
-
-  return (
-    <main>
-      <nav><strong>Stockwise</strong><span>Inventory & CRM</span><span className={metrics.connected ? "status good" : "status"}>{metrics.connected ? "Database connected" : "Database setup pending"}</span></nav>
-      <section className="hero">
-        <p className="eyebrow">OPERATIONS OVERVIEW</p>
-        <h1>Keep stock and customer relationships in one place.</h1>
-        <p className="intro">Your starter ERP is deployed and ready for data. Tables are applied automatically during deployment.</p>
-      </section>
-      <section className="cards">
-        {cards.map(([label, value, detail]) => <article className="card" key={String(label)}><p>{label}</p><strong>{value}</strong><small>{detail}</small></article>)}
-      </section>
-      <section className="panel">
-        <div><p className="eyebrow">NEXT STEP</p><h2>Add your first products and customers</h2><p>Tables included: products, customers, sales, and sale items.</p></div>
-        <div className="badge">Supabase PostgreSQL</div>
-      </section>
-    </main>
-  );
-}
+function Card({label,value}:{label:string;value:number}) { return <article className="card"><p>{label}</p><strong>{value}</strong></article>; }
+function Input({label,...props}:{label:string;name:string;type?:string;step?:string;required?:boolean;defaultValue?:string}) { return <label>{label}<input {...props}/></label>; }
+function Form({title,action,children}:{title:string;action:(f:FormData)=>Promise<void>;children:React.ReactNode}) { return <section className="form-card"><h2>{title}</h2><form action={action}>{children}</form></section>; }
+function List({title,rows}:{title:string;rows:React.ReactNode[]}) { return <section className="list-card"><h2>{title}</h2><ul>{rows.length?rows:<li className="empty">No records yet.</li>}</ul></section>; }
+function Operation({title,action,products,contacts,contactName,contactLabel,priceLabel,button}:{title:string;action:(f:FormData)=>Promise<void>;products:{id:string;name:string;sku:string}[];contacts:{id:string;name:string}[];contactName:string;contactLabel:string;priceLabel:string;button:string}) { return <Form title={title} action={action}><label>{contactLabel}<select name={contactName}><option value="">Walk-in / none</option>{contacts.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label><label>Product<select name="productId" required><option value="">Select product</option>{products.map(p=><option value={p.id} key={p.id}>{p.name} ({p.sku})</option>)}</select></label><Input name="quantity" label="Quantity" type="number" defaultValue="1" required/><Input name="unitPrice" label={priceLabel} type="number" step="0.0001" required/><label>Currency<select name="currency"><option>USD</option><option>AED</option><option>LKR</option></select></label><Input name="ratePerUsd" label="Currency units per USD" type="number" step="0.000001" defaultValue="1" required/><button disabled={!products.length}>{button}</button></Form>; }
