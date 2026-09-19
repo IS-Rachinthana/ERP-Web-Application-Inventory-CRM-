@@ -1,1 +1,3 @@
-# ERP-Web-Application-Inventory-CRM-
+# ERP Web Application (Inventory & CRM)
+
+Initial repository setup test.
