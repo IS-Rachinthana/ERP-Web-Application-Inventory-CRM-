@@ -10,7 +10,7 @@ export function AuthForm() {
     const email = String(formData.get("email")); const password = String(formData.get("password"));
     const supabase = createSupabaseBrowserClient(); setMessage("");
     if (mode === "reset") { const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/login` }); setMessage(error?.message ?? "Password reset instructions have been sent."); return; }
-    const result = mode === "login" ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password, options: { data: { full_name: String(formData.get("name") || "") } } });
+    const result = mode === "login" ? await supabase.auth.signInWithPassword({ email, password }) : await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/auth/callback`, data: { full_name: String(formData.get("name") || "") } } });
     if (result.error) { setMessage(result.error.message); return; }
     if (mode === "signup") { setMessage("Account created. Confirm your email if Supabase requests it, then log in."); setMode("login"); return; }
     window.location.assign("/");
