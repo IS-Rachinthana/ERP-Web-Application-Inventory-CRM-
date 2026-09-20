@@ -156,6 +156,7 @@ model Product {
   id                   String            @id @default(cuid())
   sku                  String            @unique
   name                 String
+  price                Decimal           @db.Decimal(12, 2)
   description          String?
   costPrice            Decimal           @default(0) @db.Decimal(14, 4)
   sellingPrice         Decimal           @default(0) @db.Decimal(14, 4)

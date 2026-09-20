@@ -41,7 +41,7 @@ export async function createProduct(formData: FormData) {
   const product = await prisma.$transaction(async (tx) => {
     const created = await tx.product.create({ data: {
       name, sku, type: type as "LAPTOP" | "SPARE_PART" | "ACCESSORY", trackingMode: trackingMode as "SERIAL" | "QUANTITY",
-      description: String(formData.get("description") || "").trim() || null, costPrice, sellingPrice,
+      description: String(formData.get("description") || "").trim() || null, price: sellingPrice, costPrice, sellingPrice,
       categoryId: String(formData.get("categoryId") || "") || null, brandId: String(formData.get("brandId") || "") || null,
       unitId: String(formData.get("unitId") || "") || null, taxRateId: String(formData.get("taxRateId") || "") || null,
       minimumOrderQuantity, maximumOrderQuantity,
