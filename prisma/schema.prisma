@@ -153,36 +153,38 @@ model Customer {
 }
 
 model Product {
-  id             String            @id @default(cuid())
-  sku            String            @unique
-  name           String
-  description    String?
-  costPrice      Decimal           @default(0) @db.Decimal(14, 4)
-  sellingPrice   Decimal           @default(0) @db.Decimal(14, 4)
-  quantityOnHand Int               @default(0)
-  reorderLevel   Int               @default(0)
-  type           ProductType       @default(ACCESSORY)
-  trackingMode   TrackingMode      @default(QUANTITY)
-  categoryId     String?
-  brandId        String?
-  unitId         String?
-  taxRateId      String?
-  isActive       Boolean           @default(true)
-  qrToken        String            @unique @default(uuid()) @db.Uuid
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
-  grnItems       GrnItem[]
-  invoiceItems   InvoiceItem[]
-  stockLedger    StockLedger[]
-  category       Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  brand          Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
-  unit           Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
-  taxRate        TaxRate?          @relation(fields: [taxRateId], references: [id], onDelete: SetNull)
-  variants       ProductVariant[]
-  laptopSpec     LaptopSpec?
-  images         ProductImage[]
-  priceLevels    ProductPrice[]
-  suppliers      ProductSupplier[]
+  id                   String            @id @default(cuid())
+  sku                  String            @unique
+  name                 String
+  description          String?
+  costPrice            Decimal           @default(0) @db.Decimal(14, 4)
+  sellingPrice         Decimal           @default(0) @db.Decimal(14, 4)
+  quantityOnHand       Int               @default(0)
+  reorderLevel         Int               @default(0)
+  type                 ProductType       @default(ACCESSORY)
+  trackingMode         TrackingMode      @default(QUANTITY)
+  categoryId           String?
+  brandId              String?
+  unitId               String?
+  taxRateId            String?
+  isActive             Boolean           @default(true)
+  qrToken              String            @unique @default(uuid()) @db.Uuid
+  minimumOrderQuantity Int               @default(1)
+  maximumOrderQuantity Int?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  grnItems             GrnItem[]
+  invoiceItems         InvoiceItem[]
+  stockLedger          StockLedger[]
+  category             Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand                Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  unit                 Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  taxRate              TaxRate?          @relation(fields: [taxRateId], references: [id], onDelete: SetNull)
+  variants             ProductVariant[]
+  laptopSpec           LaptopSpec?
+  images               ProductImage[]
+  priceLevels          ProductPrice[]
+  suppliers            ProductSupplier[]
 }
 
 model Category {

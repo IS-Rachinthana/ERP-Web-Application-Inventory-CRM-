@@ -33,6 +33,10 @@ export async function createProduct(formData: FormData) {
   if (!["LAPTOP", "SPARE_PART", "ACCESSORY"].includes(type) || !["SERIAL", "QUANTITY"].includes(trackingMode)) throw new Error("Invalid product type or tracking mode.");
   const costPrice = new Prisma.Decimal(String(formData.get("costPrice") || "0"));
   const sellingPrice = new Prisma.Decimal(String(formData.get("sellingPrice") || "0"));
+  const minimumOrderQuantity = Number(formData.get("minimumOrderQuantity") || 1);
+  const maximumText = String(formData.get("maximumOrderQuantity") || "").trim();
+  const maximumOrderQuantity = maximumText ? Number(maximumText) : null;
+  if (!Number.isInteger(minimumOrderQuantity) || minimumOrderQuantity < 1 || (maximumOrderQuantity !== null && (!Number.isInteger(maximumOrderQuantity) || maximumOrderQuantity < minimumOrderQuantity))) throw new Error("Enter a valid minimum and maximum order quantity.");
   if (costPrice.isNegative() || sellingPrice.isNegative()) throw new Error("Prices cannot be negative.");
   const product = await prisma.$transaction(async (tx) => {
     const created = await tx.product.create({ data: {
@@ -40,6 +44,7 @@ export async function createProduct(formData: FormData) {
       description: String(formData.get("description") || "").trim() || null, costPrice, sellingPrice,
       categoryId: String(formData.get("categoryId") || "") || null, brandId: String(formData.get("brandId") || "") || null,
       unitId: String(formData.get("unitId") || "") || null, taxRateId: String(formData.get("taxRateId") || "") || null,
+      minimumOrderQuantity, maximumOrderQuantity,
       laptopSpec: type === "LAPTOP" ? { create: { cpu: String(formData.get("cpu") || "") || null, ram: String(formData.get("ram") || "") || null, storage: String(formData.get("storage") || "") || null, gpu: String(formData.get("gpu") || "") || null, screen: String(formData.get("screen") || "") || null, operatingSystem: String(formData.get("operatingSystem") || "") || null, condition: String(formData.get("condition") || "") || null } } : undefined,
       variants: { create: { sku, name: "Default" } },
       priceLevels: { create: [{ level: "RETAIL", amount: sellingPrice }, { level: "COST", amount: costPrice }] },
@@ -74,11 +79,19 @@ export async function createCategory(formData: FormData) {
   await actor(["OWNER", "ADMIN", "MANAGER"]);
   const name = required(formData.get("name"), "Category name");
   await prisma.category.create({ data: { name, parentId: String(formData.get("parentId") || "") || null } });
-  revalidatePath("/catalogue");
+  revalidatePath("/catalogue"); redirect("/catalogue?notice=Category+saved+successfully.");
 }
 
 export async function createBrand(formData: FormData) {
   await actor(["OWNER", "ADMIN", "MANAGER"]);
   await prisma.brand.create({ data: { name: required(formData.get("name"), "Brand name") } });
-  revalidatePath("/catalogue"); revalidatePath("/suppliers");
+  revalidatePath("/catalogue"); revalidatePath("/suppliers"); redirect("/catalogue?notice=Brand+saved+successfully.");
+}
+
+export async function createUnit(formData: FormData) {
+  await actor(["OWNER", "ADMIN", "MANAGER"]);
+  const name = required(formData.get("name"), "Unit name");
+  const symbol = required(formData.get("symbol"), "Unit symbol").toUpperCase();
+  await prisma.unit.create({ data: { name, symbol } });
+  revalidatePath("/catalogue"); redirect("/catalogue?notice=Unit+saved+successfully.");
 }
