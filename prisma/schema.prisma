@@ -26,6 +26,15 @@ enum LedgerType {
   GDN
   ADJUSTMENT
 }
+enum AppRole {
+  OWNER
+  ADMIN
+  MANAGER
+  SALES_REP
+  STOREKEEPER
+  ACCOUNTANT
+  TECHNICIAN
+}
 
 model User {
   id String @id @default(cuid())
@@ -34,6 +43,52 @@ model User {
   passwordHash String
   role Role @default(STAFF)
   createdAt DateTime @default(now())
+}
+model Profile {
+  id String @id @db.Uuid
+  email String @unique
+  fullName String?
+  role AppRole @default(STOREKEEPER)
+  isActive Boolean @default(true)
+  branchId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auditLogs AuditLog[]
+}
+model AuditLog {
+  id String @id @default(cuid())
+  actorId String? @db.Uuid
+  action String
+  entityType String
+  entityId String?
+  detail Json?
+  createdAt DateTime @default(now())
+  actor Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+}
+model CompanySetting {
+  id String @id @default(cuid())
+  name String
+  currency Currency @default(USD)
+  updatedAt DateTime @updatedAt
+}
+model Branch {
+  id String @id @default(cuid())
+  name String
+  code String @unique
+  address String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+}
+model TaxRate {
+  id String @id @default(cuid())
+  name String
+  rate Decimal @db.Decimal(5, 2)
+  isActive Boolean @default(true)
+}
+model Unit {
+  id String @id @default(cuid())
+  name String
+  symbol String @unique
 }
 model Supplier {
   id String @id @default(cuid())
