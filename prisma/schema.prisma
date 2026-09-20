@@ -12,20 +12,24 @@ enum Role {
   ADMIN
   STAFF
 }
+
 enum Segment {
   RETAIL
   WHOLESALE
 }
+
 enum Currency {
   USD
   AED
   LKR
 }
+
 enum LedgerType {
   GRN
   GDN
   ADJUSTMENT
 }
+
 enum AppRole {
   OWNER
   ADMIN
@@ -36,160 +40,336 @@ enum AppRole {
   TECHNICIAN
 }
 
-model User {
-  id String @id @default(cuid())
-  email String @unique
-  name String
-  passwordHash String
-  role Role @default(STAFF)
-  createdAt DateTime @default(now())
+enum ProductType {
+  LAPTOP
+  SPARE_PART
+  ACCESSORY
 }
+
+enum TrackingMode {
+  SERIAL
+  QUANTITY
+}
+
+enum SupplierStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(STAFF)
+  createdAt    DateTime @default(now())
+}
+
 model Profile {
-  id String @id @db.Uuid
-  email String @unique
-  fullName String?
-  role AppRole @default(STOREKEEPER)
-  isActive Boolean @default(true)
-  branchId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id        String     @id @db.Uuid
+  email     String     @unique
+  fullName  String?
+  role      AppRole    @default(STOREKEEPER)
+  isActive  Boolean    @default(true)
+  branchId  String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   auditLogs AuditLog[]
 }
+
 model AuditLog {
-  id String @id @default(cuid())
-  actorId String? @db.Uuid
-  action String
+  id         String   @id @default(cuid())
+  actorId    String?  @db.Uuid
+  action     String
   entityType String
-  entityId String?
-  detail Json?
-  createdAt DateTime @default(now())
-  actor Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  entityId   String?
+  detail     Json?
+  createdAt  DateTime @default(now())
+  actor      Profile? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 }
+
 model CompanySetting {
-  id String @id @default(cuid())
-  name String
-  currency Currency @default(USD)
+  id        String   @id @default(cuid())
+  name      String
+  currency  Currency @default(USD)
   updatedAt DateTime @updatedAt
 }
+
 model Branch {
-  id String @id @default(cuid())
-  name String
-  code String @unique
-  address String?
-  isActive Boolean @default(true)
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  address   String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
 model TaxRate {
-  id String @id @default(cuid())
-  name String
-  rate Decimal @db.Decimal(5, 2)
-  isActive Boolean @default(true)
+  id       String    @id @default(cuid())
+  name     String
+  rate     Decimal   @db.Decimal(5, 2)
+  isActive Boolean   @default(true)
+  products Product[]
 }
+
 model Unit {
-  id String @id @default(cuid())
-  name String
-  symbol String @unique
+  id       String    @id @default(cuid())
+  name     String
+  symbol   String    @unique
+  products Product[]
 }
+
 model Supplier {
-  id String @id @default(cuid())
-  name String
-  country String?
-  contactName String?
-  email String?
-  phone String?
-  address String?
-  createdAt DateTime @default(now())
-  grns Grn[]
+  id              String                @id @default(cuid())
+  name            String
+  country         String?
+  contactName     String?
+  email           String?
+  phone           String?
+  address         String?
+  taxNumber       String?               @unique
+  paymentTerms    String?
+  status          SupplierStatus        @default(ACTIVE)
+  contacts        SupplierContact[]
+  bankAccounts    SupplierBankAccount[]
+  brands          SupplierBrand[]
+  documents       SupplierDocument[]
+  productMappings ProductSupplier[]
+  createdAt       DateTime              @default(now())
+  grns            Grn[]
 }
+
 model Customer {
-  id String @id @default(cuid())
-  name String
-  segment Segment @default(RETAIL)
-  country String?
-  email String? @unique
-  phone String?
-  address String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  invoices Invoice[]
+  id        String    @id @default(cuid())
+  name      String
+  segment   Segment   @default(RETAIL)
+  country   String?
+  email     String?   @unique
+  phone     String?
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  invoices  Invoice[]
 }
+
 model Product {
-  id String @id @default(cuid())
-  sku String @unique
-  name String
-  description String?
-  costPrice Decimal @default(0) @db.Decimal(14, 4)
-  sellingPrice Decimal @default(0) @db.Decimal(14, 4)
-  quantityOnHand Int @default(0)
-  reorderLevel Int @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  grnItems GrnItem[]
-  invoiceItems InvoiceItem[]
-  stockLedger StockLedger[]
+  id             String            @id @default(cuid())
+  sku            String            @unique
+  name           String
+  description    String?
+  costPrice      Decimal           @default(0) @db.Decimal(14, 4)
+  sellingPrice   Decimal           @default(0) @db.Decimal(14, 4)
+  quantityOnHand Int               @default(0)
+  reorderLevel   Int               @default(0)
+  type           ProductType       @default(ACCESSORY)
+  trackingMode   TrackingMode      @default(QUANTITY)
+  categoryId     String?
+  brandId        String?
+  unitId         String?
+  taxRateId      String?
+  isActive       Boolean           @default(true)
+  qrToken        String            @unique @default(uuid()) @db.Uuid
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  grnItems       GrnItem[]
+  invoiceItems   InvoiceItem[]
+  stockLedger    StockLedger[]
+  category       Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brand          Brand?            @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  unit           Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  taxRate        TaxRate?          @relation(fields: [taxRateId], references: [id], onDelete: SetNull)
+  variants       ProductVariant[]
+  laptopSpec     LaptopSpec?
+  images         ProductImage[]
+  priceLevels    ProductPrice[]
+  suppliers      ProductSupplier[]
 }
-model ExchangeRate {
-  currency Currency @id
-  ratePerUsd Decimal @db.Decimal(18, 6)
-  updatedAt DateTime @updatedAt
+
+model Category {
+  id        String     @id @default(cuid())
+  name      String
+  parentId  String?
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+
+  @@unique([name, parentId])
 }
-model DocCounter {
-  key String @id
-  value Int @default(0)
+
+model Brand {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  isActive       Boolean         @default(true)
+  products       Product[]
+  supplierBrands SupplierBrand[]
 }
-model Grn {
-  id String @id @default(cuid())
-  number String @unique
-  supplierId String?
-  currency Currency @default(USD)
-  ratePerUsd Decimal @db.Decimal(18, 6)
-  receivedAt DateTime @default(now())
-  notes String?
-  createdAt DateTime @default(now())
-  supplier Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
-  items GrnItem[]
+
+model ProductVariant {
+  id         String  @id @default(cuid())
+  productId  String
+  sku        String  @unique
+  name       String?
+  attributes Json?
+  isActive   Boolean @default(true)
+  qrToken    String  @unique @default(uuid()) @db.Uuid
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
-model GrnItem {
-  id String @id @default(cuid())
-  grnId String
+
+model LaptopSpec {
+  productId       String  @id
+  cpu             String?
+  ram             String?
+  storage         String?
+  gpu             String?
+  screen          String?
+  operatingSystem String?
+  condition       String?
+  product         Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
   productId String
-  quantity Int
-  unitCost Decimal @db.Decimal(14, 4)
-  grn Grn @relation(fields: [grnId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  path      String
+  altText   String?
+  sortOrder Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductPrice {
+  id            String    @id @default(cuid())
+  productId     String
+  level         String
+  amount        Decimal   @db.Decimal(14, 4)
+  minQuantity   Int       @default(1)
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, level, effectiveFrom])
+}
+
+model SupplierContact {
+  id         String   @id @default(cuid())
+  supplierId String
+  name       String
+  email      String?
+  phone      String?
+  jobTitle   String?
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model SupplierBankAccount {
+  id            String   @id @default(cuid())
+  supplierId    String
+  bankName      String
+  accountName   String?
+  accountNumber String
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model SupplierBrand {
+  supplierId String
+  brandId    String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@id([supplierId, brandId])
+}
+
+model SupplierDocument {
+  id         String   @id @default(cuid())
+  supplierId String
+  path       String
+  name       String
+  mimeType   String
+  createdAt  DateTime @default(now())
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model ProductSupplier {
+  productId         String
+  supplierId        String
+  supplierSku       String?
+  lastPurchasePrice Decimal? @db.Decimal(14, 4)
+  product           Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplier          Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@id([productId, supplierId])
+}
+
+model ExchangeRate {
+  currency   Currency @id
+  ratePerUsd Decimal  @db.Decimal(18, 6)
+  updatedAt  DateTime @updatedAt
+}
+
+model DocCounter {
+  key   String @id
+  value Int    @default(0)
+}
+
+model Grn {
+  id         String    @id @default(cuid())
+  number     String    @unique
+  supplierId String?
+  currency   Currency  @default(USD)
+  ratePerUsd Decimal   @db.Decimal(18, 6)
+  receivedAt DateTime  @default(now())
+  notes      String?
+  createdAt  DateTime  @default(now())
+  supplier   Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  items      GrnItem[]
+}
+
+model GrnItem {
+  id        String  @id @default(cuid())
+  grnId     String
+  productId String
+  quantity  Int
+  unitCost  Decimal @db.Decimal(14, 4)
+  grn       Grn     @relation(fields: [grnId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
   @@unique([grnId, productId])
 }
+
 model Invoice {
-  id String @id @default(cuid())
-  number String @unique
+  id         String        @id @default(cuid())
+  number     String        @unique
   customerId String?
-  currency Currency @default(USD)
-  ratePerUsd Decimal @db.Decimal(18, 6)
-  issuedAt DateTime @default(now())
-  notes String?
-  createdAt DateTime @default(now())
-  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items InvoiceItem[]
+  currency   Currency      @default(USD)
+  ratePerUsd Decimal       @db.Decimal(18, 6)
+  issuedAt   DateTime      @default(now())
+  notes      String?
+  createdAt  DateTime      @default(now())
+  customer   Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items      InvoiceItem[]
 }
+
 model InvoiceItem {
-  id String @id @default(cuid())
-  invoiceId String
-  productId String
-  quantity Int
-  unitPrice Decimal @db.Decimal(14, 4)
+  id              String  @id @default(cuid())
+  invoiceId       String
+  productId       String
+  quantity        Int
+  unitPrice       Decimal @db.Decimal(14, 4)
   costPriceAtSale Decimal @db.Decimal(14, 4)
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  invoice         Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product         Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
   @@unique([invoiceId, productId])
 }
+
 model StockLedger {
-  id String @id @default(cuid())
+  id        String     @id @default(cuid())
   productId String
-  type LedgerType
-  quantity Int
-  refType String
-  refId String
-  note String?
-  createdAt DateTime @default(now())
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  type      LedgerType
+  quantity  Int
+  refType   String
+  refId     String
+  note      String?
+  createdAt DateTime   @default(now())
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Restrict)
 }
