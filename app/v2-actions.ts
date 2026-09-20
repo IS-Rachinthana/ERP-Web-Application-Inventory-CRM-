@@ -38,7 +38,9 @@ export async function createProduct(formData: FormData) {
   const maximumOrderQuantity = maximumText ? Number(maximumText) : null;
   if (!Number.isInteger(minimumOrderQuantity) || minimumOrderQuantity < 1 || (maximumOrderQuantity !== null && (!Number.isInteger(maximumOrderQuantity) || maximumOrderQuantity < minimumOrderQuantity))) throw new Error("Enter a valid minimum and maximum order quantity.");
   if (costPrice.isNegative() || sellingPrice.isNegative()) throw new Error("Prices cannot be negative.");
-  const product = await prisma.$transaction(async (tx) => {
+  let product;
+  try {
+  product = await prisma.$transaction(async (tx) => {
     const created = await tx.product.create({ data: {
       name, sku, type: type as "LAPTOP" | "SPARE_PART" | "ACCESSORY", trackingMode: trackingMode as "SERIAL" | "QUANTITY",
       description: String(formData.get("description") || "").trim() || null, price: sellingPrice, costPrice, sellingPrice,
@@ -52,6 +54,10 @@ export async function createProduct(formData: FormData) {
     await tx.auditLog.create({ data: { actorId: profile.id, action: "CREATE", entityType: "PRODUCT", entityId: created.id, detail: { sku, name } } });
     return created;
   });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") redirect("/catalogue?error=A+product+with+that+SKU+already+exists.");
+    redirect("/catalogue?error=The+product+could+not+be+saved.+Please+check+the+form+and+try+again.");
+  }
   revalidatePath("/"); revalidatePath("/catalogue"); redirect(`/catalogue?created=${product.id}`);
 }
 
