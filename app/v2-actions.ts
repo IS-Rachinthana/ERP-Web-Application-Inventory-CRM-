@@ -101,3 +101,30 @@ export async function createUnit(formData: FormData) {
   await prisma.unit.create({ data: { name, symbol } });
   revalidatePath("/catalogue"); redirect("/catalogue?notice=Unit+saved+successfully.");
 }
+
+export async function updateProduct(formData: FormData) {
+  const profile = await actor(productRoles);
+  const id = required(formData.get("id"), "Product");
+  const name = required(formData.get("name"), "Product name");
+  const costPrice = new Prisma.Decimal(String(formData.get("costPrice") || "0"));
+  const sellingPrice = new Prisma.Decimal(String(formData.get("sellingPrice") || "0"));
+  const minimumOrderQuantity = Number(formData.get("minimumOrderQuantity") || 1);
+  const maximumText = String(formData.get("maximumOrderQuantity") || "").trim();
+  const maximumOrderQuantity = maximumText ? Number(maximumText) : null;
+  if (!Number.isInteger(minimumOrderQuantity) || minimumOrderQuantity < 1 || (maximumOrderQuantity !== null && (!Number.isInteger(maximumOrderQuantity) || maximumOrderQuantity < minimumOrderQuantity))) redirect("/catalogue?error=Enter+a+valid+minimum+and+maximum+order+quantity.");
+  await prisma.$transaction(async (tx) => {
+    const product = await tx.product.update({ where: { id }, data: { name, description: String(formData.get("description") || "").trim() || null, price: sellingPrice, costPrice, sellingPrice, minimumOrderQuantity, maximumOrderQuantity, categoryId: String(formData.get("categoryId") || "") || null, brandId: String(formData.get("brandId") || "") || null, unitId: String(formData.get("unitId") || "") || null, isActive: String(formData.get("isActive")) === "true" } });
+    await tx.auditLog.create({ data: { actorId: profile.id, action: "UPDATE", entityType: "PRODUCT", entityId: product.id, detail: { name } } });
+  });
+  revalidatePath("/"); revalidatePath("/catalogue"); redirect("/catalogue?notice=Product+updated+successfully.");
+}
+
+export async function deleteProduct(formData: FormData) {
+  const profile = await actor(["OWNER", "ADMIN", "MANAGER"]);
+  const id = required(formData.get("id"), "Product");
+  await prisma.$transaction(async (tx) => {
+    await tx.product.update({ where: { id }, data: { isActive: false } });
+    await tx.auditLog.create({ data: { actorId: profile.id, action: "DELETE", entityType: "PRODUCT", entityId: id, detail: { softDelete: true } } });
+  });
+  revalidatePath("/"); revalidatePath("/catalogue"); redirect("/catalogue?notice=Product+removed+from+the+active+catalogue.");
+}
